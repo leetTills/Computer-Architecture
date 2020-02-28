@@ -4,18 +4,24 @@ import sys
 
 SP = 7
 
+
 MUL = 0b10100010
 LDI = 0b10000010
 PRN = 0b01000111
 HLT = 0b00000001
 PUSH = 0b01000101
 POP = 0b01000110
+CMP = 0b10100111
+JMP = 0b01010100
+JNE = 0b01010110
+JEQ = 0b01010101
 
 class CPU:
     """Main CPU class."""
 
     def __init__(self):
         """Construct a new CPU."""
+        self.flag = [0] * 8
         self.reg = [0] * 8
         self.ram = [0] * 256   
         self.pc = 0
@@ -25,7 +31,12 @@ class CPU:
             MUL: self.MUL_op,
             HLT: self.HLT_op,
             PUSH: self.PUSH_op,
-            POP: self.POP_op
+            POP: self.POP_op,
+            JEQ: self.JEQ_op,
+            JNE: self.JNE_op,
+            JMP: self.JMP_op,
+            CMP: self.CMP_op
+
         }
 
     def LDI_op(self, operand_a, operand_b):
@@ -62,6 +73,31 @@ class CPU:
         print(f"POP reg[SP]: {self.reg[SP]}")
         return value
 
+    def CMP_op(self, operand_a, operand_b):
+        self.alu("CMP", operand_a, operand_b)
+        self.pc += 3
+
+    
+    def JEQ_op(self, operand_a, operand_b):
+        if self.flag[7] == 1:
+            jump = self.ram[self.pc + 1]
+            self.pc = self.reg[jump]
+        else:
+            self.pc += 2
+
+
+    def JNE_op(self, operand_a, operand_b):
+        if self.flag[7] == 0:
+            jump = self.ram[self.pc + 1]
+            self.pc = self.reg[jump]
+        else:
+            self.pc += 2
+
+    def JMP_op(self, operand_a, operand_b):
+        jump = self.ram[self.pc + 1]
+        self.pc = self.reg[jump]
+
+
     def ram_read(self, mar):
         mdr = self.ram[mar]
         return mdr
@@ -93,7 +129,11 @@ class CPU:
 
         if op == "ADD":
             self.reg[reg_a] += self.reg[reg_b]
-        #elif op == "SUB": etc
+        elif op == "MUL":
+            self.reg[reg_a] *= self.reg[reg_b]
+        elif op == "CMP":
+            if self.reg[reg_a] == self.reg[reg_b]:
+                self.flag[7] = 1
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -105,7 +145,7 @@ class CPU:
 
         print(f"TRACE: %02X | %02X %02X %02X |" % (
             self.pc,
-            #self.fl,
+            #self.flag,
             #self.ie,
             self.ram_read(self.pc),
             self.ram_read(self.pc + 1),
